@@ -1,0 +1,262 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en-US">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Adobe AudienceManager</title>
+    <script type="text/javascript">
+        var Demdex = {
+            version: "6.2",
+            dest: "3",
+            PROTOCOL: "https:" == document.location.protocol ? "https:" : "http:",
+            COOKIE_DOMAIN: function() {
+                var a = document.domain;
+                /demdex\.net$/i.test(a) && (a = ".demdex.net");
+                return a
+            }(),
+            SIX_MONTHS_IN_MINUTES: 259200,
+            sent: [],
+            errored: [],
+            cbmacros: ["%timestamp%", "%rnd%", "%did%", "%http_proto%"],
+            addListener: function() {
+                if (document.addEventListener) return function(a, e, d) {
+                    a.addEventListener(e, function(a) {
+                        "function" == typeof d && d(a)
+                    }, !1)
+                };
+                if (document.attachEvent) return function(a, e, d) {
+                    a.attachEvent("on" +
+                        e,
+                        function(a) {
+                            "function" == typeof d && d(a)
+                        })
+                }
+            }(),
+            replaceMacro: function(a) {
+                var e;
+                return "%rnd%" == a || "%timestamp%" == a ? "" + (new Date).getTime() : "%did%" == a && (e = this.getCookie("demdex")) ? e.replace(/==/g, "").replace(/:/, "-") : "%http_proto%" == a ? "https:" == document.location.protocol ? "https" : "http" : a
+            },
+            canSetCookie: function() {
+                var a, e;
+                return navigator.cookieEnabled && (a = this.getCookie("demdex"), a || (this.setCookie("_dp", "1", 1, "/", this.COOKIE_DOMAIN, !1), e = this.getCookie("_dp")), a || e) ? (this.setCookie("_dp", "1", -1E3, "/",
+                    this.COOKIE_DOMAIN, !1), !0) : !1
+            },
+            getCookie: function(a) {
+                a += "=";
+                var e = document.cookie.split(";"),
+                    d, b, c;
+                d = 0;
+                for (b = e.length; d < b; d++) {
+                    for (c = e[d];
+                        " " == c.charAt(0);) c = c.substring(1, c.length);
+                    if (0 == c.indexOf(a)) return decodeURIComponent(c.substring(a.length, c.length))
+                }
+                return null
+            },
+            setCookie: function(a, e, d, b, c, f) {
+                var g = new Date;
+                d && (d *= 6E4);
+                document.cookie = a + "=" + e + (d ? ";expires=" + (new Date(g.getTime() + d)).toUTCString() : "") + (b ? ";path=" + b : "") + (c ? ";domain=" + c : "") + (f || "https:" === this.PROTOCOL ? ";secure" : "") + ";SameSite=None"
+            },
+            onMessage: function(a) {
+                try {
+                    var e = this.getCookie("demdex") || "",
+                        d = this.getCookie("DexLifeCycle") || "";
+                    if (!(e.match(/^DID:/) || e.match(/^NOTARGET/) || e.match(/dv2:jY0wRKU\/M28\/lvlLHbINBA==/) || d.match(/^NOTARGET/))) {
+                        var b = "string" == typeof a ? a.split("|") : [];
+                        a = decodeURIComponent;
+                        var c = a(b[0]),
+                            f = {
+                                destType: c,
+                                id: a(b[1]),
+                                tag: a(b[2]),
+                                urls: "string" == typeof b[3] ? b[3].split(",") : [],
+                                ttl: b[4] ? a(b[4]) : 0
+                            };
+                        f.urls.length && ("dests" == c ? this.fireTags(f) : "ibs" == c ? (f.dpType = 1, this.processIBSOrDPM(f)) : "dpm" == c && (f.dpType = 2, "string" ==
+                            typeof b[5] && b[5].length && (f.callbackProperties = b[5].split(","), this.setDPMCallback(f)), this.processIBSOrDPM(f)))
+                    }
+                } catch (g) {}
+            },
+            fireTags: function(a, e) {
+                try {
+                    var d = this,
+                        b = a.id,
+                        c = a.tag,
+                        f = a.urls,
+                        g, h, k, l, m, n, p, q;
+                    if (f instanceof Array && (l = f.length))
+                        for (k = 0; k < l; k++)
+                            if (g = f[k]) {
+                                g = decodeURIComponent(g);
+                                e && this.protocolIsPrependable(g) && (g = this.PROTOCOL + g);
+                                m = 0;
+                                for (n = this.cbmacros.length; m < n; m++) p = this.cbmacros[m], g = g.replace(new RegExp(p, "gi"), this.replaceMacro(p));
+                                q = function(a, e) {
+                                    return function() {
+                                        d.errored.push(e)
+                                    }
+                                }(b,
+                                    g);
+                                "img" == c && (h = new Image, d.addListener(h, "abort", q), d.addListener(h, "error", q), h.src = g, this.sent.push(g))
+                            }
+                } catch (r) {
+                    this.fireErrorPixel("Error in Demdex.fireTags function: " + r.message + ";tag=" + c + ";url=" + g)
+                }
+            },
+            protocolIsPrependable: function(a) {
+                return /^\/\//.test(a)
+            },
+            processIBSOrDPM: function(a) {
+                try {
+                    var e = this.getCookie("dextp"),
+                        d = !1,
+                        b = !1,
+                        c, f, g, h, k, l, m;
+                    if (e) {
+                        c = e.split("|");
+                        g = 0;
+                        for (h = c.length; g < h; g++)
+                            if (f = c[g], f.match("^" + a.id + "-" + a.dpType + "-")) {
+                                d = !0;
+                                k = f.split("-")[2];
+                                l = new Date;
+                                l.setTime(k);
+                                m = (new Date).getTime();
+                                m - l.getTime() < 6E4 * a.ttl ? b = !0 : c.splice(g, 1);
+                                break
+                            }
+                        d && b || (this.fireTags(a, !0), this.setCookie("dextp", c.join("|"), this.SIX_MONTHS_IN_MINUTES, "/", this.COOKIE_DOMAIN, !1))
+                    } else this.fireTags(a, !0), this.setCookie("dextp", a.id + "-" + a.dpType + "-" + (new Date).getTime(), this.SIX_MONTHS_IN_MINUTES, "/", this.COOKIE_DOMAIN, !1)
+                } catch (n) {
+                    this.fireErrorPixel("Error in Demdex.processIBSOrDPM function: " + n.message)
+                }
+            },
+            setDPMCallback: function(a) {
+                try {
+                    var e = this,
+                        d = a.callbackProperties,
+                        b = decodeURIComponent,
+                        c = b(d[0]),
+                        f = b(d[1]),
+                        g = b(d[2]),
+                        h = b(d[3]),
+                        k = b(d[4]),
+                        l = a.id;
+                    if (c && f && g && h && k) switch ("object" != typeof window[c] && (window[c] = {}), l) {
+                        case "19":
+                            window[c][f] = function(a) {
+                                try {
+                                    var c = [],
+                                        d = a.segments,
+                                        b, f;
+                                    b = 0;
+                                    for (f = d.length; b < f; b++) c.push(g + "=" + d[b].id);
+                                    c.length && ((new Image).src = e.PROTOCOL + k + c.join("&"))
+                                } catch (h) {
+                                    e.fireErrorPixel("Error in callback function for dpid 19: " + h.message)
+                                }
+                            };
+                            break;
+                        case "21":
+                            window[c][f] = function(a) {
+                                try {
+                                    var c = [],
+                                        d = a[g];
+                                    a = "";
+                                    var b, f, h, l;
+                                    for (b in d) "segment" != b && "gender" != b || c.push(b + "=" + d[b]), "age" == b &&
+                                        (h = d[b] || "", "" != h && (l = Date.parse("01/01/" + h), isNaN(l) || (a = parseInt(((new Date).getTime() - l) / 31536E6, 10))), c.push(b + "=" + a));
+                                    f = c.join("&");
+                                    f = f.replace(/segment=/i, "seg=").replace(/gender=/i, "gen=");
+                                    (new Image).src = e.PROTOCOL + k + f.toLowerCase()
+                                } catch (t) {
+                                    e.fireErrorPixel("Error in callback function for dpid 21: " + t.message)
+                                }
+                            };
+                            break;
+                        case "22":
+                            window[c][f] = function(a) {
+                                try {
+                                    var b = a[g];
+                                    a = "";
+                                    var c, d;
+                                    b.company_size && (a += "company_size=" + b.company_size.code);
+                                    b.seniority && (a += "&seniority=" + b.seniority.code);
+                                    b.location &&
+                                        (a += "&location=" + b.location.code);
+                                    b.education && (a += "&education=" + b.education.code);
+                                    b.gender && (a += "&gender=" + b.gender.code);
+                                    b.group && (a += "&group=" + b.group.code);
+                                    if (b.functional_area)
+                                        if (b.functional_area instanceof Array)
+                                            for (c = 0, d = b.functional_area.length; c < d; c++) a += "&functional_area=" + b.functional_area[c].code;
+                                        else a += "&functional_area=" + b.functional_area.code;
+                                    if (b.industry)
+                                        if (b.industry instanceof Array)
+                                            for (c = 0, d = b.industry.length; c < d; c++) a += "&industry=" + b.industry[c].code;
+                                        else a += "&industry=" + b.industry.code;
+                                    "" != a && ((new Image).src = e.PROTOCOL + k + a)
+                                } catch (f) {
+                                    e.fireErrorPixel("Error in callback function for dpid 22: " + f.message)
+                                }
+                            }
+                    }
+                } catch (m) {
+                    this.fireErrorPixel("Error in Demdex.setDPMCallback function: " + m.message)
+                }
+            },
+            fireErrorPixel: function(a) {
+                try {
+                    var e = encodeURIComponent;
+                    (new Image).src = "//error.demdex.net/event?d_px=14137&d_ld=" + e("site=" + e(document.location.href) + "&message=" + e(a) + "&_ts=" + (new Date).getTime())
+                } catch (d) {}
+            },
+            xd: function() {
+                var a = 5,
+                    e, d, b = /^#?\d+&/,
+                    c, f;
+                return {
+                    receiveMessage: function(g, h) {
+                        try {
+                            if (window.postMessage)
+                                if (g &&
+                                    (c = function(a) {
+                                        if ("string" === typeof h && a.origin !== h || "[object Function]" === Object.prototype.toString.call(h) && !1 === h(a.origin)) return !1;
+                                        g(a)
+                                    }), window.addEventListener) window[g ? "addEventListener" : "removeEventListener"]("message", c, !1);
+                                else window[g ? "attachEvent" : "detachEvent"]("onmessage", c);
+                            else "function" == typeof g && (setTimeout(function() {
+                                a = 100
+                            }, 35E3), f = function() {
+                                e = document.location.hash;
+                                e !== d && b.test(e) && (d = e, g({
+                                    data: e.replace(b, "")
+                                }));
+                                setTimeout(f, a)
+                            }, f())
+                        } catch (k) {
+                            Demdex.fireErrorPixel("Error in Demdex.xd.receiveMessage function: " +
+                                k.message)
+                        }
+                    }
+                }
+            }()
+        };
+        (function() {
+            try {
+                var a = decodeURIComponent(document.location.hash.replace(/^#/, "")).split("/");
+                Demdex.xd.demdexOrigin = a[0] + "//" + a[2];
+                Demdex.canSetCookie() ? Demdex.xd.receiveMessage(function(a) {
+                    Demdex.onMessage(a.data)
+                }, Demdex.xd.demdexOrigin) : Demdex.fireErrorPixel("Can't set cookies")
+            } catch (e) {
+                Demdex.fireErrorPixel("Error in anonymous function for initalizing Demdex.xd.receiveMessage function: " + e.message)
+            }
+        })();
+    </script>
+</head>
+
+<body></body>
+
+</html>
